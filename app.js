@@ -91,10 +91,11 @@ class ResumeBuilder {
     }
 
     setupInitialEntries() {
-        this.setupEducationListeners();
-        this.setupExperienceListeners();
-        this.setupProjectListeners();
-        this.setupAchievementListeners();
+        // Initialize with one entry for each section by default
+        this.addEducation();
+        this.addExperience(); 
+        this.addProject();
+        this.addAchievement();
     }
 
     addSkill() {
@@ -129,8 +130,13 @@ class ResumeBuilder {
     }
 
     addEducation() {
-        const container = document.getElementById('educationContainer');
         const index = this.resumeData.education.length;
+        this.resumeData.education.push({});
+        this.addEducationEntry(index);
+    }
+
+    addEducationEntry(index) {
+        const container = document.getElementById('educationContainer');
         
         const html = `
             <div class="education-entry" data-index="${index}">
@@ -147,7 +153,6 @@ class ResumeBuilder {
         `;
         
         container.insertAdjacentHTML('beforeend', html);
-        this.resumeData.education.push({});
         this.setupEducationListeners();
     }
 
@@ -183,8 +188,13 @@ class ResumeBuilder {
     }
 
     addExperience() {
-        const container = document.getElementById('experienceContainer');
         const index = this.resumeData.experience.length;
+        this.resumeData.experience.push({});
+        this.addExperienceEntry(index);
+    }
+
+    addExperienceEntry(index) {
+        const container = document.getElementById('experienceContainer');
         
         const html = `
             <div class="experience-entry" data-index="${index}">
@@ -201,7 +211,6 @@ class ResumeBuilder {
         `;
         
         container.insertAdjacentHTML('beforeend', html);
-        this.resumeData.experience.push({});
         this.setupExperienceListeners();
     }
 
@@ -237,8 +246,13 @@ class ResumeBuilder {
     }
 
     addProject() {
-        const container = document.getElementById('projectsContainer');
         const index = this.resumeData.projects.length;
+        this.resumeData.projects.push({});
+        this.addProjectEntry(index);
+    }
+
+    addProjectEntry(index) {
+        const container = document.getElementById('projectsContainer');
         
         const html = `
             <div class="project-entry" data-index="${index}">
@@ -253,7 +267,6 @@ class ResumeBuilder {
         `;
         
         container.insertAdjacentHTML('beforeend', html);
-        this.resumeData.projects.push({});
         this.setupProjectListeners();
     }
 
@@ -289,8 +302,13 @@ class ResumeBuilder {
     }
 
     addAchievement() {
-        const container = document.getElementById('achievementsContainer');
         const index = this.resumeData.achievements.length;
+        this.resumeData.achievements.push({});
+        this.addAchievementEntry(index);
+    }
+
+    addAchievementEntry(index) {
+        const container = document.getElementById('achievementsContainer');
         
         const html = `
             <div class="achievement-entry" data-index="${index}">
@@ -300,7 +318,6 @@ class ResumeBuilder {
         `;
         
         container.insertAdjacentHTML('beforeend', html);
-        this.resumeData.achievements.push({});
         this.setupAchievementListeners();
     }
 
@@ -395,9 +412,7 @@ class ResumeBuilder {
                         ${education.map(edu => edu.degree ? `
                             <div class="section-item">
                                 <div class="item-title">${edu.degree}</div>
-                                <div class="item-subtitle">${edu.institution}</div>
-                                ${edu.year ? `<div class="item-duration">${edu.year}</div>` : ''}
-                                ${edu.grade ? `<div class="item-duration">Grade: ${edu.grade}</div>` : ''}
+                                <div class="item-subtitle">${edu.institution} ${edu.year ? `• ${edu.year}` : ''} ${edu.grade ? `• ${edu.grade}` : ''}</div>
                             </div>
                         ` : '').join('')}
                     </div>
@@ -609,39 +624,33 @@ class ResumeBuilder {
         button.innerHTML = '<span class="loading"></span> Generating PDF...';
         button.disabled = true;
 
+        const element = document.getElementById('resumePreview');
+        const fileName = this.resumeData.personal.fullName ? 
+            `${this.resumeData.personal.fullName.replace(/\s+/g, '_')}_Resume.pdf` : 
+            'Resume.pdf';
+
+        // Store original styles
+        const originalMaxHeight = element.style.maxHeight;
+        const originalOverflowY = element.style.overflowY;
+
         try {
-            const element = document.getElementById('resumePreview');
-            const canvas = await html2canvas(element, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#ffffff'
-            });
-
-            const imgData = canvas.toDataURL('image/png');
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
+            // Temporarily adjust styles for full content capture by html2canvas
+            element.style.maxHeight = 'none';
+            element.style.overflowY = 'visible';
             
-            const imgWidth = 210;
-            const pageHeight = 295;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-            let heightLeft = imgHeight;
-            let position = 0;
+            const options = {
+                margin: 10,
+                filename: fileName,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2, 
+                    useCORS: true,
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['css', 'legacy'] } // Auto-splits into pages
+            };
 
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-
-            while (heightLeft >= 0) {
-                position = heightLeft - imgHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
-            }
-
-            const fileName = this.resumeData.personal.fullName ? 
-                `${this.resumeData.personal.fullName.replace(/\s+/g, '_')}_Resume.pdf` : 
-                'Resume.pdf';
-            
-            pdf.save(fileName);
+            await html2pdf().set(options).from(element).save();
 
             // Success animation
             button.classList.add('success-animation');
@@ -651,6 +660,10 @@ class ResumeBuilder {
             console.error('Error generating PDF:', error);
             alert('Error generating PDF. Please try again.');
         } finally {
+            // Restore original styles
+            element.style.maxHeight = originalMaxHeight;
+            element.style.overflowY = originalOverflowY;
+
             button.innerHTML = originalText;
             button.disabled = false;
         }
@@ -707,72 +720,76 @@ class ResumeBuilder {
         const container = document.getElementById('educationContainer');
         container.innerHTML = '';
         
+        // Always ensure at least one entry exists
         if (this.resumeData.education.length === 0) {
-            this.addEducation();
-        } else {
-            this.resumeData.education.forEach((edu, index) => {
-                this.addEducation();
-                const entry = container.children[index];
-                Object.entries(edu).forEach(([field, value]) => {
-                    const input = entry.querySelector(`[data-field="${field}"]`);
-                    if (input) input.value = value || '';
-                });
-            });
+            this.resumeData.education.push({});
         }
+        
+        this.resumeData.education.forEach((edu, index) => {
+            this.addEducationEntry(index);
+            const entry = container.children[index];
+            Object.entries(edu).forEach(([field, value]) => {
+                const input = entry.querySelector(`[data-field="${field}"]`);
+                if (input) input.value = value || '';
+            });
+        });
     }
 
     populateExperience() {
         const container = document.getElementById('experienceContainer');
         container.innerHTML = '';
         
+        // Always ensure at least one entry exists
         if (this.resumeData.experience.length === 0) {
-            this.addExperience();
-        } else {
-            this.resumeData.experience.forEach((exp, index) => {
-                this.addExperience();
-                const entry = container.children[index];
-                Object.entries(exp).forEach(([field, value]) => {
-                    const input = entry.querySelector(`[data-field="${field}"]`);
-                    if (input) input.value = value || '';
-                });
-            });
+            this.resumeData.experience.push({});
         }
+        
+        this.resumeData.experience.forEach((exp, index) => {
+            this.addExperienceEntry(index);
+            const entry = container.children[index];
+            Object.entries(exp).forEach(([field, value]) => {
+                const input = entry.querySelector(`[data-field="${field}"]`);
+                if (input) input.value = value || '';
+            });
+        });
     }
 
     populateProjects() {
         const container = document.getElementById('projectsContainer');
         container.innerHTML = '';
         
+        // Always ensure at least one entry exists
         if (this.resumeData.projects.length === 0) {
-            this.addProject();
-        } else {
-            this.resumeData.projects.forEach((proj, index) => {
-                this.addProject();
-                const entry = container.children[index];
-                Object.entries(proj).forEach(([field, value]) => {
-                    const input = entry.querySelector(`[data-field="${field}"]`);
-                    if (input) input.value = value || '';
-                });
-            });
+            this.resumeData.projects.push({});
         }
+        
+        this.resumeData.projects.forEach((proj, index) => {
+            this.addProjectEntry(index);
+            const entry = container.children[index];
+            Object.entries(proj).forEach(([field, value]) => {
+                const input = entry.querySelector(`[data-field="${field}"]`);
+                if (input) input.value = value || '';
+            });
+        });
     }
 
     populateAchievements() {
         const container = document.getElementById('achievementsContainer');
         container.innerHTML = '';
         
+        // Always ensure at least one entry exists
         if (this.resumeData.achievements.length === 0) {
-            this.addAchievement();
-        } else {
-            this.resumeData.achievements.forEach((ach, index) => {
-                this.addAchievement();
-                const entry = container.children[index];
-                Object.entries(ach).forEach(([field, value]) => {
-                    const input = entry.querySelector(`[data-field="${field}"]`);
-                    if (input) input.value = value || '';
-                });
-            });
+            this.resumeData.achievements.push({});
         }
+        
+        this.resumeData.achievements.forEach((ach, index) => {
+            this.addAchievementEntry(index);
+            const entry = container.children[index];
+            Object.entries(ach).forEach(([field, value]) => {
+                const input = entry.querySelector(`[data-field="${field}"]`);
+                if (input) input.value = value || '';
+            });
+        });
     }
 
     newResume() {
@@ -826,30 +843,30 @@ class ResumeBuilder {
     }
 
     clearEducation() {
-        this.resumeData.education = [];
+        this.resumeData.education = [{}]; // Keep one empty entry
         document.getElementById('educationContainer').innerHTML = '';
-        this.addEducation();
+        this.addEducationEntry(0);
         this.updatePreview();
     }
 
     clearExperience() {
-        this.resumeData.experience = [];
+        this.resumeData.experience = [{}]; // Keep one empty entry
         document.getElementById('experienceContainer').innerHTML = '';
-        this.addExperience();
+        this.addExperienceEntry(0);
         this.updatePreview();
     }
 
     clearProjects() {
-        this.resumeData.projects = [];
+        this.resumeData.projects = [{}]; // Keep one empty entry
         document.getElementById('projectsContainer').innerHTML = '';
-        this.addProject();
+        this.addProjectEntry(0);
         this.updatePreview();
     }
 
     clearAchievements() {
-        this.resumeData.achievements = [];
+        this.resumeData.achievements = [{}]; // Keep one empty entry
         document.getElementById('achievementsContainer').innerHTML = '';
-        this.addAchievement();
+        this.addAchievementEntry(0);
         this.updatePreview();
     }
 }

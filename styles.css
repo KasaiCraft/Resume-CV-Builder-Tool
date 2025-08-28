@@ -275,6 +275,8 @@ textarea {
     border-radius: 0.5rem;
     margin-bottom: 1rem;
     position: relative;
+    /* Ensure a stacking context for children if needed, though position: relative already does this */
+    z-index: 1; /* Give the card a base z-index if it conflicts with siblings, but the button will be higher */
 }
 
 .remove-btn {
@@ -289,6 +291,7 @@ textarea {
     height: 2rem;
     cursor: pointer;
     font-size: 0.75rem;
+    z-index: 10; /* Ensure the button is on top of its parent card */
 }
 
 .remove-btn:hover {
