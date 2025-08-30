@@ -405,7 +405,6 @@ textarea {
     margin: 0 auto;
     font-size: 0.875rem;
     line-height: 1.4;
-    min-height: 29.7cm;
     padding: 2rem;
     font-family: var(--font-family);
     overflow-wrap: break-word;

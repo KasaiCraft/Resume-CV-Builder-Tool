@@ -634,6 +634,10 @@ class ResumeBuilder {
         const originalOverflowY = element.style.overflowY;
 
         try {
+            // Wait for all web fonts to be loaded before rendering to canvas
+            // This helps ensure fonts are correctly applied in the PDF output.
+            await document.fonts.ready;
+
             // Temporarily adjust styles for full content capture by html2canvas
             element.style.maxHeight = 'none';
             element.style.overflowY = 'visible';
@@ -643,7 +647,7 @@ class ResumeBuilder {
                 filename: fileName,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
-                    scale: 2, 
+                    scale: 3, // Increased scale for higher resolution, improving font appearance, spacing, and alignment fidelity
                     useCORS: true,
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
